@@ -340,12 +340,14 @@ for entry in CRITERES:
             cell_sai.border = BORDER_ALL
             cell_sai.protection = PROT_UNLOCKED  # déverrouillé pour saisie
             # Note brute pondérée
-            # formule : =IF(saisie="","", IF(saisie="NE","", score(saisie) * poids_crit * poids_partie * 20))
-            # score("0")=0, score("1")=0.5, score("2")=1 via IF imbriqués (compatible LibreOffice toutes versions)
+            # formule : =IF(saisie="","", IF(saisie="NE","", saisie/2 * poids_crit * poids_partie * 20))
+            # Comparaisons avec valeurs typées NOMBRE (LibreOffice convertit auto la liste DV en nombres).
+            # score = saisie/2 → 0/2=0, 1/2=0.5, 2/2=1. NUMBERVALUE pour gérer aussi le cas texte si jamais.
+            # On utilise N(saisie) pour forcer la conversion en nombre (renvoie 0 si texte non numérique).
             f_note = (
                 f'=IF({ref_saisie}="","",'
                 f'IF({ref_saisie}="NE","",'
-                f'IF({ref_saisie}="0",0,IF({ref_saisie}="1",0.5,IF({ref_saisie}="2",1,0)))'
+                f'(IFERROR(IF(ISNUMBER({ref_saisie}),{ref_saisie},VALUE({ref_saisie})),0)/2)'
                 f'*{cell_critere_poids}*{cell_partie_poids}*20))'
             )
             cell_nt = ws_eval.cell(row, cn, f_note)
