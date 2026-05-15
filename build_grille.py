@@ -626,12 +626,12 @@ ws_eval.freeze_panes = "G4"
 # Protection : verrouillage par défaut, déverrouillage explicite sur les saisies
 # Les cellules saisie et poids ont déjà été marquées PROT_UNLOCKED
 ws_eval.protection.sheet = True
-ws_eval.protection.password = ""  # pas de mot de passe
+# Ne PAS appeler .password = "" → openpyxl hasherait une chaîne vide et bloquerait LibreOffice
 ws_eval.protection.formatCells = False
 ws_eval.protection.formatColumns = False
 ws_eval.protection.formatRows = False
-ws_eval.protection.selectLockedCells = True
-ws_eval.protection.selectUnlockedCells = True
+ws_eval.protection.selectLockedCells = False
+ws_eval.protection.selectUnlockedCells = False
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FEUILLE ÉLÈVES
@@ -730,7 +730,7 @@ ws_eleves.conditional_formatting.add(
 
 # Protection feuille Élèves
 ws_eleves.protection.sheet = True
-ws_eleves.protection.password = ""
+# Pas de password (cf. note plus haut)
 
 ws_eleves.freeze_panes = "B4"
 
