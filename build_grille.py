@@ -201,8 +201,9 @@ def col_signal(i_eleve):
 # Lignes
 ROW_TITRE = 1
 ROW_SOUS_TITRE = 2
-ROW_ENTETE = 3
-ROW_DATA_DEBUT = 4  # première ligne de critère / partie
+ROW_NOMS_ELEVES = 3   # NOUVELLE ligne : nom élève (fusionné sur 3 colonnes du bloc)
+ROW_ENTETE = 4        # en-têtes Saisie/Note/⚠
+ROW_DATA_DEBUT = 5    # première ligne de critère / partie
 
 # ─── Lignes 1-2 : titre ──────────────────────────────────────────────────────
 ws_eval.cell(ROW_TITRE, 1, TITRE_LIGNE1)
@@ -220,34 +221,62 @@ n_cols_total = COL_BLOC_DEBUT - 1 + 3 * N_ELEVES
 ws_eval.merge_cells(start_row=ROW_TITRE, start_column=1, end_row=ROW_TITRE, end_column=n_cols_total)
 ws_eval.merge_cells(start_row=ROW_SOUS_TITRE, start_column=1, end_row=ROW_SOUS_TITRE, end_column=n_cols_total)
 
-# ─── Ligne 3 : en-têtes ──────────────────────────────────────────────────────
+# ─── Lignes 3-4 : en-têtes (ligne 3 = nom élève fusionné, ligne 4 = libellés) ──
+# Ligne 3 : libellés des colonnes fixes (occupent les deux lignes par fusion verticale)
 ENTETES_FIXES = ["N°", "Partie", "Question", "Type", "Critère / attendu", "Poids"]
 for i, label in enumerate(ENTETES_FIXES, start=1):
-    c = ws_eval.cell(ROW_ENTETE, i, label)
+    c = ws_eval.cell(ROW_NOMS_ELEVES, i, label)
     c.font = FONT_ENTETE
     c.fill = FILL_ENTETE
     c.alignment = AL_CENTER_WRAP
     c.border = BORDER_ALL
+    # Fusionner verticalement sur 2 lignes (ROW_NOMS_ELEVES et ROW_ENTETE)
+    ws_eval.merge_cells(
+        start_row=ROW_NOMS_ELEVES, start_column=i,
+        end_row=ROW_ENTETE, end_column=i,
+    )
 
+# Pour chaque élève : ligne 3 = nom (fusionné sur 3 cols), ligne 4 = Saisie/Note/⚠
 for i in range(1, N_ELEVES + 1):
-    c_sai = ws_eval.cell(ROW_ENTETE, col_saisie(i))
-    c_sai.value = f"E{i}"  # libellé court ; le nom complet est sur feuille Élèves
+    row_eleve_dans_eleves = i + 3  # élève i → ligne i+3 dans 'Élèves' (qui commence en B4)
+    cs = col_saisie(i)
+    cn = col_note(i)
+    cg = col_signal(i)
+
+    # Ligne 3 : nom élève (formule → 'Élèves'!B<row>), fusionné sur 3 colonnes
+    c_nom = ws_eval.cell(ROW_NOMS_ELEVES, cs)
+    c_nom.value = (
+        f'=IFERROR(IF(Élèves!B{row_eleve_dans_eleves}="",'
+        f'"E{i}",Élèves!B{row_eleve_dans_eleves}),"E{i}")'
+    )
+    c_nom.font = FONT_ENTETE
+    c_nom.fill = FILL_ENTETE
+    c_nom.alignment = AL_CENTER_WRAP
+    c_nom.border = BORDER_ALL
+    ws_eval.merge_cells(
+        start_row=ROW_NOMS_ELEVES, start_column=cs,
+        end_row=ROW_NOMS_ELEVES, end_column=cg,
+    )
+
+    # Ligne 4 : libellés Saisie / Note / ⚠
+    c_sai = ws_eval.cell(ROW_ENTETE, cs, "Saisie")
     c_sai.font = FONT_ENTETE
     c_sai.fill = FILL_ENTETE
     c_sai.alignment = AL_CENTER_WRAP
     c_sai.border = BORDER_ALL
-    c_note = ws_eval.cell(ROW_ENTETE, col_note(i), "Note")
+    c_note = ws_eval.cell(ROW_ENTETE, cn, "Note")
     c_note.font = FONT_ENTETE
     c_note.fill = FILL_ENTETE
     c_note.alignment = AL_CENTER_WRAP
     c_note.border = BORDER_ALL
-    c_sig = ws_eval.cell(ROW_ENTETE, col_signal(i), "⚠")
+    c_sig = ws_eval.cell(ROW_ENTETE, cg, "⚠")
     c_sig.font = FONT_ENTETE
     c_sig.fill = FILL_ENTETE
     c_sig.alignment = AL_CENTER_WRAP
     c_sig.border = BORDER_ALL
 
-ws_eval.row_dimensions[ROW_ENTETE].height = 32
+ws_eval.row_dimensions[ROW_NOMS_ELEVES].height = 26
+ws_eval.row_dimensions[ROW_ENTETE].height = 22
 
 # ─── Lignes 4+ : critères ────────────────────────────────────────────────────
 # Construction des lignes en gardant trace de :
@@ -665,7 +694,7 @@ databar_rule = DataBarRule(
 ws_eval.conditional_formatting.add(note20_range, databar_rule)
 
 # ─── Figement et protection ──────────────────────────────────────────────────
-ws_eval.freeze_panes = "G4"
+ws_eval.freeze_panes = "G5"
 
 # Protection : verrouillage par défaut, déverrouillage explicite sur les saisies
 # Les cellules saisie et poids ont déjà été marquées PROT_UNLOCKED
