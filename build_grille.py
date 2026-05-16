@@ -244,6 +244,7 @@ for i in range(1, N_ELEVES + 1):
     cg = col_signal(i)
 
     # Ligne 3 : nom élève (formule → 'Élèves'!B<row>), fusionné sur 3 colonnes
+    # Texte en rotation verticale (90°, lit du bas vers le haut) pour économiser la largeur
     c_nom = ws_eval.cell(ROW_NOMS_ELEVES, cs)
     c_nom.value = (
         f'=IFERROR(IF(Élèves!B{row_eleve_dans_eleves}="",'
@@ -251,7 +252,10 @@ for i in range(1, N_ELEVES + 1):
     )
     c_nom.font = FONT_ENTETE
     c_nom.fill = FILL_ENTETE
-    c_nom.alignment = AL_CENTER_WRAP
+    c_nom.alignment = Alignment(
+        horizontal="center", vertical="bottom",
+        text_rotation=90, wrap_text=False,
+    )
     c_nom.border = BORDER_ALL
     ws_eval.merge_cells(
         start_row=ROW_NOMS_ELEVES, start_column=cs,
@@ -275,7 +279,7 @@ for i in range(1, N_ELEVES + 1):
     c_sig.alignment = AL_CENTER_WRAP
     c_sig.border = BORDER_ALL
 
-ws_eval.row_dimensions[ROW_NOMS_ELEVES].height = 26
+ws_eval.row_dimensions[ROW_NOMS_ELEVES].height = 140  # haut pour accueillir le nom à la verticale
 ws_eval.row_dimensions[ROW_ENTETE].height = 22
 
 # ─── Lignes 4+ : critères ────────────────────────────────────────────────────
