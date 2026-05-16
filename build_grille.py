@@ -356,10 +356,10 @@ for entry in CRITERES:
             cell_nt.border = BORDER_ALL
             cell_nt.number_format = "0.00"
             cell_nt.fill = FILL_NOTE
-            # Signal : "◄" si autre saisie au-dessus mais celle-ci vide, "~" si NE
+            # Signal : "◄" si saisie vide (critère à noter), "~" si NE (volontairement non évalué), rien sinon
             f_signal = (
-                f'=IF({ref_saisie}="NE","~",'
-                f'IF({ref_saisie}="","",""))'
+                f'=IF({ref_saisie}="","◄",'
+                f'IF({ref_saisie}="NE","~",""))'
             )
             cell_sg = ws_eval.cell(row, cg, f_signal)
             cell_sg.alignment = AL_CENTER
@@ -371,6 +371,41 @@ for entry in CRITERES:
     row += 1
 
 ROW_DATA_FIN = row - 1  # dernière ligne critère/partie
+
+# ─── Note de partie sur la ligne de chaque titre P1..P5 ──────────────────────
+# Pour chaque partie et chaque élève, on calcule :
+#   note_partie /20 = Σ(notes brutes critères) / Σ(poids critères évalués) / poids_partie
+# La note brute contient déjà poids_crit * poids_partie * 20, donc :
+#   note_partie /20 = Σ(notes brutes) / (poids_partie * Σ(poids_crit évalués))
+# Si rien n'est saisi → cellule vide (IFERROR).
+for partie, rows_p in ROWS_CRITERES.items():
+    rmin, rmax = min(rows_p), max(rows_p)
+    rp = ROW_PARTIE[partie]
+    poids_partie_ref = f"$F${rp}"
+    plage_poids_crit = f"$F${rmin}:$F${rmax}"
+    for i in range(1, N_ELEVES + 1):
+        cs = col_saisie(i)
+        cn = col_note(i)
+        col_letter_s = get_column_letter(cs)
+        col_letter_n = get_column_letter(cn)
+        plage_saisie = f"{col_letter_s}{rmin}:{col_letter_s}{rmax}"
+        plage_note = f"{col_letter_n}{rmin}:{col_letter_n}{rmax}"
+        # Dénominateur = Σ(poids_crit) × poids_partie × 20 pour les critères où saisie est dans {0,1,2}
+        # Comme note brute = score × poids_crit × poids_partie × 20,
+        # note_partie /20 = SUM(notes) / (SUMPRODUCT(poids_crit, masque) × poids_partie)
+        denom = (
+            f'SUMPRODUCT(({plage_poids_crit})'
+            f'*({plage_saisie}<>"")'
+            f'*({plage_saisie}<>"NE"))'
+            f'*{poids_partie_ref}'
+        )
+        f_note_partie = f'=IFERROR(SUM({plage_note})/({denom}),"")'
+        cell_np = ws_eval.cell(rp, cn, f_note_partie)
+        cell_np.alignment = AL_CENTER
+        cell_np.font = Font(name="Calibri", size=10, bold=True, color="2E5C8A")
+        cell_np.fill = FILL_PARTIE
+        cell_np.number_format = "0.00"
+        cell_np.border = BORDER_BOLD
 
 # ─── Lignes audit & synthèse ─────────────────────────────────────────────────
 ROW_AUDIT_POIDS = ROW_DATA_FIN + 2
@@ -470,7 +505,14 @@ for i in range(1, N_ELEVES + 1):
             f'*$F${rp}'
         )
     denom_clean = "(" + "+".join(denom_sans20_parts) + ")"
-    f_note20 = f'=IFERROR(SUM({plage_note})/{denom_clean},"")'
+    # Numérateur : Σ des notes brutes par partie (lignes critères uniquement, pas les titres)
+    # On exclut les lignes de partie où on affiche maintenant la note de partie
+    numer_parts = []
+    for partie, rows_p in ROWS_CRITERES.items():
+        rmin, rmax = min(rows_p), max(rows_p)
+        numer_parts.append(f"SUM({col_letter_n}{rmin}:{col_letter_n}{rmax})")
+    numer_clean = "(" + "+".join(numer_parts) + ")"
+    f_note20 = f'=IFERROR({numer_clean}/{denom_clean},"")'
     cell_n20 = ws_eval.cell(ROW_NOTE_20, cn, f_note20)
     cell_n20.alignment = AL_CENTER
     cell_n20.font = Font(name="Calibri", size=12, bold=True)
